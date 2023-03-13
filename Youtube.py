@@ -147,7 +147,7 @@ def generate_summary(embedding_path):
     return final_summary
 
 def main(url):
-    # it's file_name of mp3: "xxxxx.mp3"
+    # file_name of mp3: "xxxxx.mp3"
     file_name = fetch_audio_from_youtube(url)
     mp3_path = f'audio_files/{file_name}'
     print('Whisper start to converting audio to text...')
@@ -155,9 +155,12 @@ def main(url):
     json_path = './embedding_files/' + file_name[:-4] + '.json'
     save_embedding(text_path, json_path)
     
+    # generate a summary first
     summary = generate_summary(json_path)
     print(f'\n\nSummary of {file_name} is:\n{summary}')
     conversation = []
+    
+    # set up system role for gpt-3.5 turbo
     conversation.append({'role': 'system', 'content': 'I am an AI assistant named Whisper. My goal is answer user\'s questions about relevant infomation of some youtube videos contents.'})
     pre_prompt = 'This is relevant info from the video: '
     while True:
@@ -165,8 +168,9 @@ def main(url):
         top_similarity_embedding_list = fetch_relevant_info(question, json_path, 3)
         relevant_content = ''
         for embedding in top_similarity_embedding_list:
-            # starts from 13th character to ignore "{   "text":"
+            # starts from 13th character to ignore "{   'text':"
             relevant_content += embedding['content'][13:]
+        # combine user role and question for gpt-3.5 turbo
         conversation.append({'role': 'user', 'content':pre_prompt + relevant_content + question})
         try:
             completion = gpt35_completion(conversation)
@@ -177,6 +181,7 @@ def main(url):
             print('Token limitation reached', e)
             break
         print('\nWhisper: ' + completion)
+        # combine assistant role and completion for gpt-3.5 turbo
         conversation.append({'role': 'assistant', 'content': completion})
 
 
